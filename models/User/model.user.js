@@ -129,6 +129,12 @@ const userSchema = new mongoose.Schema(
     },
     authToken:{
       type :String
+    },
+
+    platformType:{
+      type:String,
+      enum:["app","website"],
+      default:"website"
     }
 
   },

@@ -5,12 +5,15 @@ import User from '../../models/User/model.user.js';
 const authMiddleware = asyncHandler(async (req, res, next) => {
 
     let token;
+    let platformType;
     if (req.cookies && req.cookies.user_jwt) {
         token = req.cookies.user_jwt;
+        platformType = "website";
     }
 
     if(req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
         token = req.headers.authorization.split(" ")[1];
+        platformType = "app";
     }
 
     if (token) {
@@ -18,6 +21,8 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
             const decoded =  jwt.verify(token, process.env.JWT_SECRET_USER); // Verify the token
             const user = await User.findById(decoded.id)
             req.user = user
+            user.platformType = platformType;
+            await user.save()
             if (!req.user) {
                 res.status(404);
                 throw new Error("User not found");

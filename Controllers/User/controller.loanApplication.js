@@ -2,6 +2,10 @@ import asyncHandler from '../../middleware/asyncHandler.js';
 import User from '../../models/User/model.user.js';
 import LoanApplication from '../../models/User/model.loanApplication.js';
 import Documents from '../../models/Documents.js';
+import Lead from '../../models/Leads.js'
+import LeadStatus from '../../models/LeadStatus.js'
+import { nextSequence } from "../../utils/nextSequence.js";
+import {postLogs} from "../../Controllers/logs.js"
 
 
 
@@ -169,7 +173,73 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
     if (!addBankDetails) {
         return res.status(400).json({ message: "Bank Details not added" });
     }
-    return res.status(200).json({ message: "Bank Details added successfully"  , bankDetails : addBankDetails.disbursalBankDetails});
+
+    // logic of creating lead
+    const userDetails = await findById(userId) 
+    const {fName, mName, lName} = splitName(userDetails.personalDetails.fullName)
+
+    let docs;
+    const exisitingDoc = await Documents.findOne({ pan: pan });
+    if (exisitingDoc) {
+        docs = exisitingDoc;
+    } else {
+        docs = await Documents.create({
+            pan: pan,
+        });
+    }
+    const leadNo = await nextSequence("leadNo", "QUALED", 10);
+
+    const leadStatus = await LeadStatus.create({
+        pan: pan,
+        leadNo,
+        isInProcess: true,
+    });
+
+    console.log("lead No", leadNo);
+
+    const [day, month, year] = userDetails.personalDetails.dob.split('-');
+    const dob = new Date(`${year}-${month}-${day}`);
+    const newLead = await Lead.create({
+        fName:fName,
+        mName: mName,
+        lName: lName,
+        gender:userDetails.personalDetails.gender,
+        dob: dob,
+        leadNo,
+        aadhaar:userDetails.aadarNumber,
+        pan:userDetails.PAN,
+        documents: docs._id.toString(),
+        mobile: String(userDetails.mobile),
+        alternateMobile: alternateMobile ? String(alternateMobile) : "",
+        personalEmail : userDetails.personalDetails.personalEmail ? userDetails.personalDetails.personalEmail : "",
+        officeEmail: loanDetails.employeeDetails.officeEmail ? loanDetails.employeeDetails.officeEmail : "",
+        loanAmount: loanDetails.loanDetails.principal,
+        salary: userDetails.incomeDetails.monthlyIncome,
+        pinCode: userDetails.residenceDetails.pincode,
+        state : userDetails.residenceDetails.state,
+        city: userDetails.residenceDetails.city,
+        source : userDetails.platformType,
+        leadStatus: leadStatus._id,
+    });
+    console.log("leadNo", newLead);
+
+    if (!newLead) {
+        res.status(400).json({message:"Lead not created"});
+        throw new Error("Lead not created!!!");
+    }
+
+    // viewLeadsLog(req, res, status || '', borrower || '', leadRemarks = '');
+    const logs = await postLogs(
+        newLead._id,
+        "NEW LEAD",
+        `${newLead.fName}${newLead.mName && ` ${newLead.mName}`}${
+            newLead.lName && ` ${newLead.lName}`
+        }`,
+        "New lead created"
+    );
+   
+
+    return res.status(200).json({ message: "Loan Applied successfully!" ,  newLead, logs });
 });
 
 const getApplicationStatus = asyncHandler(async (req, res) => {
