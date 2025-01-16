@@ -69,6 +69,7 @@ export const login = asyncHandler(async (req, res) => {
 
     // Find the user by email
     const employee = await Employee.findOne({ email: email });
+    console.log("employe--->" , employee)
 
     if (!employee.isActive) {
         res.status(401);
@@ -76,6 +77,7 @@ export const login = asyncHandler(async (req, res) => {
     }
     if (employee && (await employee.matchPassword(password))) {
         generateToken(res, employee._id);
+        
 
         res.status(200).json({
             _id: employee._id,

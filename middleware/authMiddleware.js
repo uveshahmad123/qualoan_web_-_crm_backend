@@ -5,8 +5,14 @@ import Lead from "../models/Leads.js";
 
 // Protected Routes
 const protect = asyncHandler(async (req, res, next) => {
-    let token = req.cookies.jwt;
+    let token;
+    if (req.cookies && req.cookies.jwt) {
+        token = req.cookies.jwt;
+    }
 
+    if (!token) {
+        return res.status(401).json({ message: "not authosrised" });
+    }
     if (token) {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -50,7 +56,6 @@ const protect = asyncHandler(async (req, res, next) => {
 
             // const role = req.role;
             const requestedRole = req.query?.role;
-
             if (!requestedRole || !req.roles.has(requestedRole)) {
                 res.status(403);
                 throw new Error(

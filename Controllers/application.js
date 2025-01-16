@@ -151,6 +151,7 @@ export const allocatedApplications = asyncHandler(async (req, res) => {
 export const postCamDetails = async (leadId, cibilScore, loanAmount) => {
     const details = { cibilScore: cibilScore, loanAmount: loanAmount };
 
+    // need to add logic details come from lead
     await CamDetails.create({
         leadId: leadId,
         details: details,

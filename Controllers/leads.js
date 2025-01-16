@@ -13,9 +13,10 @@ import equifax from "../utils/fetchCibil.js";
 import { checkApproval } from "../utils/checkApproval.js";
 import { postCamDetails } from "./application.js";
 import cibilPdf from "../utils/cibilPdf.js";
-import Otp from "../models/Otp.js";
+import Otp from "../models/User/model.otp.js";
 import { nextSequence } from "../utils/nextSequence.js";
 import LeadStatus from "../models/LeadStatus.js";
+import { componentsToColor } from "pdf-lib";
 
 // @desc Create loan leads
 // @route POST /api/leads
@@ -166,7 +167,10 @@ export const allocateLead = asyncHandler(async (req, res) => {
     if (!lead) {
         throw new Error("Lead not found"); // This error will be caught by the error handler
     }
+    console.log("screenerId--->" ,screenerId)
     const employee = await Employee.findOne({ _id: screenerId });
+    console.log(employee , "sfbkvfkwhvfwiu")
+
     const logs = await postLogs(
         lead._id,
         "LEAD IN PROCESS",
@@ -345,6 +349,7 @@ export const recommendLead = asyncHandler(async (req, res) => {
             officeEmail,
             screenedBy: screenerName,
         };
+        // need to add logic from lead 
         const applicant = await applicantDetails(details);
 
         await postCamDetails(id, lead.cibilScore, lead.loanAmount);

@@ -29,6 +29,7 @@ export const applicantDetails = async (details = null) => {
         };
 
         // Define the data to update if the applicant exists, or to create if not
+        // yhi se hi lead se data pass  krna h yha 
         const updateData = {
             personalDetails: {
                 fName: details.fName,
