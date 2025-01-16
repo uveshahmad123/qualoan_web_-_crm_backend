@@ -161,7 +161,7 @@ const mobileGetOtp = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "User not found" });
     }
 
-    const otp = generateRandomNumber();
+    const otp =   generateRandomNumber();
     const result = await otpSent(mobile, otp);
 
     if (result.data.ErrorMessage === "Success") {
@@ -570,7 +570,9 @@ const getDashboardDetails = asyncHandler(async (req, res) => {
     if (!loanApplication) {
         return res.status(200).json({
             success: true,
-            message: "No loan application found",
+            message: "Registration Completed",
+            isRegistration: true,
+            registrationStatus: user.registrationStatus,
         });
     }
 

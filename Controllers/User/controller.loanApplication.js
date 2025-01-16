@@ -6,6 +6,8 @@ import Lead from '../../models/Leads.js'
 import LeadStatus from '../../models/LeadStatus.js'
 import { nextSequence } from "../../utils/nextSequence.js";
 import {postLogs} from "../../Controllers/logs.js"
+import checkUploadedDocuments from "../../utils/User/isDocumentUploaded.js"
+import splitName from "../../utils/splitName.js"
 
 
 
@@ -174,12 +176,10 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Bank Details not added" });
     }
 
-    // logic of creating lead
-    const userDetails = await findById(userId) 
-    const {fName, mName, lName} = splitName(userDetails.personalDetails.fullName)
-
+    const userDetails = await User.findById(userId) 
     let docs;
-    const exisitingDoc = await Documents.findOne({ pan: pan });
+    let pan = userDetails.PAN
+    const exisitingDoc = await Documents.findOne({ pan: userDetails.PAN });
     if (exisitingDoc) {
         docs = exisitingDoc;
     } else {
@@ -187,6 +187,17 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
             pan: pan,
         });
     }
+
+    const isDocumentUploaded = checkUploadedDocuments(docs.document)
+    if(!isDocumentUploaded.isComplete){
+        return res.status(400).json({message:"Please upload all documents" , missingDocument:isDocumentUploaded.missingDocuments})
+    }
+
+    // logic of creating lead
+    
+    const {fName, mName, lName} = splitName(userDetails.personalDetails.fullName)
+
+     
     const leadNo = await nextSequence("leadNo", "QUALED", 10);
 
     const leadStatus = await LeadStatus.create({
@@ -195,7 +206,6 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
         isInProcess: true,
     });
 
-    console.log("lead No", leadNo);
 
     const [day, month, year] = userDetails.personalDetails.dob.split('-');
     const dob = new Date(`${year}-${month}-${day}`);
@@ -210,7 +220,7 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
         pan:userDetails.PAN,
         documents: docs._id.toString(),
         mobile: String(userDetails.mobile),
-        alternateMobile: alternateMobile ? String(alternateMobile) : "",
+        alternateMobile: userDetails.alternateMobile ? String(alternateMobile) : "",
         personalEmail : userDetails.personalDetails.personalEmail ? userDetails.personalDetails.personalEmail : "",
         officeEmail: loanDetails.employeeDetails.officeEmail ? loanDetails.employeeDetails.officeEmail : "",
         loanAmount: loanDetails.loanDetails.principal,
@@ -221,7 +231,6 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
         source : userDetails.platformType,
         leadStatus: leadStatus._id,
     });
-    console.log("leadNo", newLead);
 
     if (!newLead) {
         res.status(400).json({message:"Lead not created"});
