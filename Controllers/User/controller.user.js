@@ -10,6 +10,7 @@ import OTP from '../../models/User/model.otp.js';
 import { uploadFilesToS3, deleteFilesFromS3 } from '../../config/uploadFilesToS3.js';
 import LoanApplication from '../../models/User/model.loanApplication.js';
 import PanDetails from '../../models/PanDetails.js';
+import { postUserLogs } from './controller.userLogs.js';
 
 
 const aadhaarOtp = asyncHandler(async (req, res) => {
@@ -127,6 +128,8 @@ const saveAadhaarDetails = asyncHandler(async (req, res) => {
             details
         });
 
+        await postUserLogs(userDetails._id , `User Register Sucessfully with aadhaar`)
+
         // generate token 
         const token = generateUserToken(res, userDetails._id)
         userDetails.authToken = token
@@ -243,6 +246,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
         { registrationStatus: "MOBILE_VERIFIED", mobile: mobile, previousJourney: "AADHAR_VERIFIED" },
         { new: true }
     );
+    await postUserLogs(result._id, `User Mobile Verified Sucessfully`)
     console.log(result, "result")
 
 
@@ -293,6 +297,8 @@ const verifyPan = asyncHandler(async (req, res) => {
         { registrationStatus: "PAN_VERIFIED", previousJourney: "MOBILE_VERIFIED", PAN: pan },
         { new: true }
     );
+
+    await postUserLogs(userId, `User PAN Verified Sucessfully`)
 
     // add pan details in panDetails table
     await PanDetails.findOneAndUpdate(
@@ -350,6 +356,7 @@ const personalInfo = asyncHandler(async (req, res) => {
     userDetails.previousJourney = previousJourney
     await userDetails.save();
 
+    await postUserLogs(userId, `User Personal Details Updated Sucessfully`)
     return res.status(200).json({ message: "Personal details updated successfully", user: userDetails.personalDetails });
 
 });
@@ -381,7 +388,7 @@ const currentResidence = asyncHandler(async (req, res) => {
     userDetails.registrationStatus = registrationStatus
     userDetails.previousJourney = previousJourney
     await userDetails.save();
-
+    await postUserLogs(userId, `User Current Residence Details Updated Sucessfully`)
 
     res.status(200).json({ message: "Personal details updated successfully", residenceDetails: userDetails.residenceDetails });
 
@@ -419,7 +426,7 @@ const addIncomeDetails = asyncHandler(async (req, res) => {
     userDetails.registrationStatus = registrationStatus
     userDetails.previousJourney = previousJourney
     await userDetails.save();
-
+    await postUserLogs(userId, `User Income Details Updated Sucessfully`)   
     res.status(200).json({ message: "Income details updated successfully", incomeDetails: userDetails.incomeDetails });
 })
 
@@ -494,6 +501,7 @@ const uploadProfile = asyncHandler(async (req, res) => {
     if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
     }
+    await postUserLogs(userId, `User Profile Picture Updated Sucessfully`)
 
     // Return the response
     return res.status(200).json({
@@ -602,6 +610,7 @@ const checkLoanElegblity = asyncHandler(async (req, res) => {
         return res.status(200).json({ message: "You have already applied for loan", isEligible: false });
     }
 
+    await postUserLogs(userId,`User check loan elegiblity`)
     return res.status(200).json({ message: "You are eligible for loan", isEligible: true });
 
 })

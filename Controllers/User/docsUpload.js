@@ -3,6 +3,7 @@ import Documents from "../../models/Documents.js";
 import { uploadDocs } from "../../utils/User/docsUploadAndFetch.js";
 import User from "../../models/User/model.user.js"
 import LoanApplication from "../../models/User/model.loanApplication.js";
+import { postUserLogs } from "./controller.userLogs.js";    
 
 export const uploadDocuments = asyncHandler(async (req, res) => {
     const userId = req.user._id
@@ -96,6 +97,7 @@ export const uploadDocuments = asyncHandler(async (req, res) => {
     if (!addDocs) {
         return res.status(400).json({ message: "Loan Application not updated" })
     }
+    await postUserLogs(userId, `User add ${req.files}`)
 
     return res.status(200).json({ message: "Documents uploaded successfully", status: addDocs.progressStatus });
 });

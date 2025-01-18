@@ -1,7 +1,12 @@
 import mongoose from "mongoose";
 
+
 const camSchema = new mongoose.Schema(
     {
+        leadNo:{
+            type: String,
+            required: true
+        },
         leadId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Lead",

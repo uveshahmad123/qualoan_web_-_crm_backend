@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const applicationSchema = new mongoose.Schema(
     {
+        leadNo:{
+            type : String,
+            required: true,
+        },
         lead: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Lead",

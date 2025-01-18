@@ -148,11 +148,12 @@ export const allocatedApplications = asyncHandler(async (req, res) => {
 
 // @desc Adding CAM details
 // @access Private
-export const postCamDetails = async (leadId, cibilScore, loanAmount) => {
+export const postCamDetails = async (leadId, cibilScore, loanAmount ,leadNo) => {
     const details = { cibilScore: cibilScore, loanAmount: loanAmount };
 
     // need to add logic details come from lead
     await CamDetails.create({
+        leadNo:leadNo,
         leadId: leadId,
         details: details,
     });

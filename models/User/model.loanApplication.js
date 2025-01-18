@@ -60,8 +60,16 @@ const disbursalBankSchema = new mongoose.Schema({
     accountType: {
         type: String,
         required: true,
-        enum: ['SAVINGS', 'CURRENT']
+        enum: ["SAVINGS", "CURRENT", "OVERDRAFT"]
     },
+    beneficiaryName: {
+        type: String,
+        required: true,
+    },
+    branchName:{
+        type : String,
+        required: true,
+    }
 })
 
 const loanDetailsSchema = new mongoose.Schema({

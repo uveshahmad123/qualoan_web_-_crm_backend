@@ -334,6 +334,7 @@ export const recommendLead = asyncHandler(async (req, res) => {
             alternateMobile,
             personalEmail,
             officeEmail,
+            leadNo
         } = lead;
         const details = {
             pan,
@@ -348,11 +349,13 @@ export const recommendLead = asyncHandler(async (req, res) => {
             personalEmail,
             officeEmail,
             screenedBy: screenerName,
+            extraDetails : extraDetails,
+            leadNo
         };
         // need to add logic from lead 
         const applicant = await applicantDetails(details);
 
-        await postCamDetails(id, lead.cibilScore, lead.loanAmount);
+        await postCamDetails(id, lead.cibilScore, lead.loanAmount , leadNo);
 
         const newApplication = new Application({
             leadNo: lead.leadNo,

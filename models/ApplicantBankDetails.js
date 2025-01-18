@@ -31,7 +31,7 @@ const bankSchema = new mongoose.Schema(
         accountType: {
             type: String,
             required: true,
-            enum: ["savings", "current", "overdraft"],
+            enum: ['SAVINGS', 'CURRENT', "OVERDRAFT"],
         },
     },
     { timestamps: true }

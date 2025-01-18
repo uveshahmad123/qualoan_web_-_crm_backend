@@ -31,6 +31,7 @@ export const applicantDetails = async (details = null) => {
         // Define the data to update if the applicant exists, or to create if not
         // yhi se hi lead se data pass  krna h yha 
         const updateData = {
+            leadNo : details.leadNo,
             personalDetails: {
                 fName: details.fName,
                 mName: details.mName,
@@ -45,6 +46,17 @@ export const applicantDetails = async (details = null) => {
                 pan: details.pan,
                 aadhaar: details.aadhaar,
             },
+            residenceDetails: details.extraDetails.residence,
+            incomeDetails: details.extraDetails.incomeDetails,
+            employmentDetails: {
+                companyName: details.extraDetails.incomeDetails.companyName,
+                companyAddress: details.extraDetails.incomeDetails.officeAddrress,
+                state: details.extraDetails.incomeDetails.state,
+                city: details.extraDetails.incomeDetails.city,
+                pincode: details.extraDetails.incomeDetails.pincode,
+                department: details.extraDetails.incomeDetails.companyType,
+                designation: details.extraDetails.incomeDetails.designation,
+            },
         };
 
         // Find the applicant by criteria and update if found, or create a new one
@@ -52,11 +64,30 @@ export const applicantDetails = async (details = null) => {
             upsert: true,
             new: true,
         });
+
+        const addBankDetails = await Bank.create(
+            {
+                borrowerId: applicant._id,
+                beneficiaryName: details.extraDetails.disbursalbankdetails
+                    .beneficiaryName,
+                bankAccNo: details.extraDetails.disbursalbankdetails
+                    .accountNumber,
+                accountType: details.extraDetails.disbursalbankdetails
+                    .accountType,
+                ifscCode: details.extraDetails.disbursalbankdetails.ifscCode,
+                bankName: details.extraDetails.disbursalbankdetails.bankName,
+                branchName: details.extraDetails.disbursalbankdetails.branchName,
+            })
+
+        if(!addBankDetails){
+            return res.status(400).json({message:"Issue in add Bank details"})
+        }
         return applicant;
     } catch (error) {
         throw new Error(error.message);
     }
 };
+
 
 // @desc Bank Verify and add the back.
 // @route POST /api/verify/bank
@@ -181,10 +212,9 @@ export const updateApplicantDetails = asyncHandler(async (req, res) => {
                 applicantsWithSameReference.forEach((applicants) => {
                     refCheck.push({
                         type: "Applicant",
-                        applicant: `${applicants.personalDetails.fName}${
-                            applicants.personalDetails.mName ??
+                        applicant: `${applicants.personalDetails.fName}${applicants.personalDetails.mName ??
                             ` ${applicants.personalDetails.mName} ${applicants.personalDetails.lName}`
-                        }`,
+                            }`,
                         mobile: `${applicants.personalDetails.mobile}`,
                         companyName: `${applicants.employment.companyName}`,
                     });
@@ -204,9 +234,8 @@ export const updateApplicantDetails = asyncHandler(async (req, res) => {
                     refCheck.push({
                         type: "Lead",
                         leadId: lead._id,
-                        name: `${lead.fName}${lead.mName && ` ${lead.mName}`} ${
-                            lead.lName
-                        }`,
+                        name: `${lead.fName}${lead.mName && ` ${lead.mName}`} ${lead.lName
+                            }`,
                         email: lead.personalEmail,
                         officeEmail: lead.officeEmail,
                         mobile: lead.mobile,
@@ -227,8 +256,7 @@ export const updateApplicantDetails = asyncHandler(async (req, res) => {
     const logs = await postLogs(
         application.lead._id,
         "APPLICANT PERSONAL DETAILS UPDATED",
-        `${application.lead.fName} ${application.lead.mName ?? ""} ${
-            application.lead.lName
+        `${application.lead.fName} ${application.lead.mName ?? ""} ${application.lead.lName
         }`,
         `Applicant personal details updated by ${employee.fName} ${employee.lName}`
     );

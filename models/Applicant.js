@@ -66,8 +66,12 @@ const residenceSchema = new mongoose.Schema({
     },
     residingSince: {
         type: String,
-        required: true,
     },
+    residenceType:{
+        type: String,
+        required: true,
+        enum: ["OWNED", "RENTED", "PARENTAL", "COMPANY PROVIDED", "OTHERS"],
+    }
 });
 
 const employmentDetailsSchema = new mongoose.Schema({
@@ -120,8 +124,38 @@ const referenceSchema = new mongoose.Schema({
     },
 });
 
+const incomeDetailsSchema = new mongoose.Schema({
+  employementType: {
+    type: String,
+    required: true,
+    enum: ["SALARIED", "SELF EMPLOYED"],
+  },
+
+  monthlyIncome: {
+    type: Number,
+    required: true,
+  },  
+  obligations: {
+    type: Number,
+  },
+  nextSalaryDate: {
+    type: Date,
+    required: true,
+  },  
+  incomeMode:{
+    type: String,
+    required: true,
+    enum: ["CASH", "BANK", "CHEQUE", "OTHERS"],
+  }
+});
+
+
 const applicantSchema = new mongoose.Schema(
     {
+        leadNo :{
+            type : String,
+            required : true,
+        },
         personalDetails: {
             type: personalDetailsSchema,
             required: true,
@@ -131,6 +165,9 @@ const applicantSchema = new mongoose.Schema(
         },
         employment: {
             type: employmentDetailsSchema,
+        },
+        incomeDetails :{
+            type : incomeDetailsSchema
         },
         reference: {
             type: [referenceSchema],
