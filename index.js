@@ -92,7 +92,7 @@ app.use("/api/employees", employeeRouter); // Use the employee routes
 app.use("/api/leads", leadRouter); // Use the lead routes
 app.use("/api/sanction", sanctionRouter); // Use the sanction letter
 app.use("/api/verify", verifyRouter); // Use the verify routes sevice to verify PAN and aadhaar
-app.use("/api/user" , userRoute)
+app.use("/api/user" , userRoute);
 
 // Error handling middleware
 app.use(notFound);

@@ -224,6 +224,7 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
     const [day, month, year] = userDetails.personalDetails.dob.split('-');
     const dob = new Date(`${year}-${month}-${day}`);
     const newLead = await Lead.create({
+        userId,
         fName: fName,
         mName: mName,
         lName: lName,

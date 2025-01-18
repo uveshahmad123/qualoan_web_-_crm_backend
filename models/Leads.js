@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const leadSchema = new mongoose.Schema(
     {
+        userId:{
+            type : mongoose.Schema.Types.ObjectId,
+            ref : "User",
+        },
         fName: {
             type: String,
             required: true,
