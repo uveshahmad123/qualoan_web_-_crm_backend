@@ -211,6 +211,9 @@ const leadSchema = new mongoose.Schema(
             enum: ["website", "bulk", "landingPage", "whatsapp", "app"],
             default: "website",
         },
+        extraDetails:[{
+            type : Object,
+        }],
         referenceId: {
             type: String,
         },
