@@ -279,6 +279,8 @@ export const recommendedApplication = asyncHandler(async (req, res) => {
 
             // Sending the application to sanction
             const newSanction = new Sanction({
+                leadNo:application.leadNo,
+                pan: application.pan,
                 application: application._id,
                 recommendedBy: req.employee._id,
             });

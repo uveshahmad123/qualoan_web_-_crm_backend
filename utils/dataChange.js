@@ -39,6 +39,8 @@ const migrateApplicationsToSanctions = async () => {
             if (!existingSanction) {
                 const newSanctionData = {
                     application: application._id,
+                    leadNo:application.leadNo,
+                    pan: application.pan,
                     recommendedBy: application.recommendedBy,
                     isChanged: true,
                 };
@@ -541,6 +543,7 @@ const sanctionActiveLeadsMigration = async () => {
                     const newActiveLead = await Closed.create({
                         pan: sanction.application.lead.pan,
                         data: [dataToAdd],
+                        leadNo: disbursal.leadNo
                     });
 
                     if (!newActiveLead) {

@@ -210,7 +210,7 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
         try {
             const { id } = req.params;
 
-            const { sanction, camDetails, response } = await getSanctionData(
+            const { sanction, camDetails, response,leadNo } = await getSanctionData(
                 id
             );
 
@@ -289,7 +289,8 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
 
             const newActiveLead = await createActiveLead(
                 pan,
-                existing.loanNo
+                existing.loanNo,
+                leadNo
                 // disbursalRes._id
             );
             if (!newActiveLead.success) {

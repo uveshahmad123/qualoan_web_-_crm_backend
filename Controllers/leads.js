@@ -359,7 +359,7 @@ export const recommendLead = asyncHandler(async (req, res) => {
 
         const newApplication = new Application({
             leadNo: lead.leadNo,
-            pan: lead.pan,
+            pan: pan,
             lead: id,
             applicant: applicant._id,
         });

@@ -6,6 +6,9 @@ const applicationSchema = new mongoose.Schema(
             type : String,
             required: true,
         },
+        pan:{
+            type: String
+        },
         lead: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Lead",

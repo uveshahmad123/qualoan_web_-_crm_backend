@@ -33,6 +33,7 @@ export const applicantDetails = async (details = null) => {
         // yhi se hi lead se data pass  krna h yha 
         const updateData = {
             leadNo : details.leadNo,
+            pan : pan,
             personalDetails: {
                 fName: details.fName,
                 mName: details.mName,

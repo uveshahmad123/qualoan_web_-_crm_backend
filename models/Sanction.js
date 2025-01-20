@@ -18,8 +18,8 @@ const sanctionSchema = new mongoose.Schema(
         leadNo: {
             type: String,
             // required: true,
-            unique:true,
-            sparse:true,
+            // unique:true,
+            // sparse:true,
         },
         pan: {
             type: String,

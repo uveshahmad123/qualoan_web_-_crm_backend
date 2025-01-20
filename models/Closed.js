@@ -7,6 +7,9 @@ const closedSchema = new mongoose.Schema(
             required: true,
             unique: true,
         },
+        leadNo:{
+            type: String,
+        },
         data: [
             {
                 disbursal: {

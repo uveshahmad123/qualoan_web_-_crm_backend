@@ -156,6 +156,9 @@ const applicantSchema = new mongoose.Schema(
             type : String,
             required : true,
         },
+        pan:{
+            type:String
+        },
         personalDetails: {
             type: personalDetailsSchema,
             required: true,
