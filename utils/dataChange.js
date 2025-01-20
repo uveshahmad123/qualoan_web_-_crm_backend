@@ -11,6 +11,7 @@ import Employee from "../models/Employees.js";
 import xlsx from "xlsx";
 import fs from "fs";
 import Bank from "../models/ApplicantBankDetails.js";
+import { formatFullName } from "./nameFormatter.js";
 
 const mongoURI = process.env.MONGO_URI;
 
@@ -759,17 +760,9 @@ export const exportApprovedSanctions = async () => {
         })
             .populate({
                 path: "application",
-                populate: { path: "lead" },
-            })
-            .lean();
-        // .populate({
-        //     path: "application",
-        //     populate: [
-        //         { path: "applicant" },
-        //         { path: "lead" },
-        //     ],
-        // }) // Populate refs if needed
-        // .lean(); // Return plain JavaScript objects
+                populate: [{ path: "applicant" }, { path: "lead" }],
+            }) // Populate refs if needed
+            .lean(); // Return plain JavaScript objects
 
         if (sanctions.length === 0) {
             console.log("No data found for today.");
@@ -798,6 +791,7 @@ export const exportApprovedSanctions = async () => {
                     PAN: sanction.application.lead.pan,
                     "Sanctioned Amount": cam.details.loanRecommended,
                     "Disbursal Amount": cam.details.netDisbursalAmount,
+                    // "Repayment Amount": cam.details.repaymentAmount,
                     PF: cam.details.netAdminFeeAmount,
                     "PF%": cam.details.adminFeePercentage,
                     ROI: cam.details.roi,
@@ -807,6 +801,14 @@ export const exportApprovedSanctions = async () => {
                     "Bank Name": bank.bankName,
                     accountNo: bank.bankAccNo,
                     IFSC: bank.ifscCode,
+                    "Residence Address":
+                        sanction.application.applicant.residence.address,
+                    "Residence City":
+                        sanction.application.applicant.residence.city,
+                    "Residence State":
+                        sanction.application.applicant.residence.state,
+                    "Residence Pincode":
+                        sanction.application.applicant.residence.pincode,
                 };
             })
         );
@@ -817,87 +819,6 @@ export const exportApprovedSanctions = async () => {
     }
 };
 
-// Function to extract data and generate Excel
-// export const exportDisbursedData = async () => {
-//     try {
-//         // const { startOfDay, endOfDay } = getTodayRange();
-
-//         // Query the database
-//         const disbursals = await Disbursal.find({
-//             isDisbursed: true,
-//             // updatedAt: { $gte: startOfDay, $lte: endOfDay },
-//         })
-//             .populate({
-//                 path: "sanction",
-//                 populate: { path: "application", populate: { path: "lead" } },
-//             })
-//             .lean();
-
-//         if (disbursals.length === 0) {
-//             console.log("No data found.");
-//             return;
-//         }
-
-//         // Format data for Excel
-//         const data = await Promise.all(
-//             disbursals.map(async (disbursed) => {
-//                 const cam = await CamDetails.findOne({
-//                     leadId: disbursed.sanction.application.lead._id.toString(),
-//                 });
-//                 const bank = await Bank.findOne({
-//                     borrowerId: disbursed.sanction.application.applicant,
-//                 });
-//                 const lead = await Lead.findOne({
-//                     _id: disbursed.sanction.application.lead._id.toString(),
-//                     pan: { $nin: ["AVZPC6217D","CYWPP7344C"] }
-//                 });
-//                 console.log('lead',lead.pan)
-
-//                 const createdDate = lead.createdAt.toLocaleString("en-US", {
-//                     month: "short",
-//                     day: "2-digit",
-//                     year: "numeric",
-//                     timeZone: "Asia/Kolkata",
-//                 });
-
-//                 const disbursedDate = disbursed.disbursedAt.toLocaleString(
-//                     "en-US",
-//                     {
-//                         month: "short",
-//                         day: "2-digit",
-//                         year: "numeric",
-//                         timeZone: "Asia/Kolkata",
-//                     }
-//                 );
-//                 return {
-//                     "Lead Created": `${createdDate}`,
-//                     "Disbursed Date": `${disbursedDate}`,
-//                     "Loan No": disbursed.loanNo,
-//                     Name: `${disbursed.sanction.application.lead.fName}${
-//                         disbursed.sanction.application.lead.mName &&
-//                         ` ${disbursed.sanction.application.lead.mName}`
-//                     }${
-//                         disbursed.sanction.application.lead.lName &&
-//                         ` ${disbursed.sanction.application.lead.lName}`
-//                     }`,
-//                     PAN: disbursed.sanction.application.lead.pan,
-//                     "Sanctioned Amount": cam.details.loanRecommended,
-//                     "Disbursed Amount": disbursed.amount,
-//                     PF: cam.details.netAdminFeeAmount,
-//                     "PF%": cam.details.adminFeePercentage,
-//                     "Beneficiary Bank Name": bank.bankName,
-//                     accountNo: bank.bankAccNo,
-//                     IFSC: bank.ifscCode,
-//                 };
-//             })
-//         );
-
-//         return data;
-//     } catch (error) {
-//         console.error("Error generating Excel file:", error);
-//     }
-// };
-
 export const exportDisbursedData = async () => {
     try {
         const disbursals = await Disbursal.find({
@@ -905,7 +826,31 @@ export const exportDisbursedData = async () => {
         })
             .populate({
                 path: "sanction",
-                populate: { path: "application", populate: { path: "lead" } },
+                populate: [
+                    {
+                        path: "application",
+                        populate: [
+                            {
+                                path: "applicant",
+                            },
+                            {
+                                path: "lead",
+                                populate: [
+                                    {
+                                        path: "recommendedBy",
+                                        // path:"CamDetails"
+                                    },
+                                ],
+                            },
+                            {
+                                path: "recommendedBy",
+                            },
+                        ],
+                    },
+                    {
+                        path: "approvedBy",
+                    },
+                ],
             })
             .lean();
 
@@ -917,12 +862,30 @@ export const exportDisbursedData = async () => {
         const data = (
             await Promise.all(
                 disbursals.map(async (disbursed) => {
-                    const lead = await Lead.findOne({
-                        _id: disbursed.sanction.application.lead._id.toString(),
-                        pan: { $nin: ["AVZPC6217D", "CYWPP7344C"] },
-                    });
-
-                    if (!lead) return null;
+                    const {
+                        sanction,
+                        sanction: {
+                            application,
+                            application: {
+                                lead,
+                                lead: {
+                                    fName,
+                                    mName,
+                                    lName,
+                                    createdAt: leadCreated,
+                                    recommendedBy: leadRecommendedBy,
+                                } = {},
+                                recommendedBy: applicationRecommendedBy,
+                            } = {},
+                            approvedBy,
+                        } = {},
+                    } = disbursed;
+                    console.log("lead", lead);
+                    if (
+                        !lead ||
+                        ["AVZPC6217D", "CYWPP7344C"].includes(lead.pan)
+                    )
+                        return null;
 
                     const cam = await CamDetails.findOne({
                         leadId: lead._id.toString(),
@@ -931,7 +894,7 @@ export const exportDisbursedData = async () => {
                         borrowerId: disbursed.sanction.application.applicant,
                     });
 
-                    const createdDate = lead.createdAt.toLocaleString("en-US", {
+                    const createdDate = leadCreated.toLocaleString("en-US", {
                         month: "short",
                         day: "2-digit",
                         year: "numeric",
@@ -947,31 +910,218 @@ export const exportDisbursedData = async () => {
                             timeZone: "Asia/Kolkata",
                         }
                     );
+                    const repaymentDate =
+                        cam?.details?.repaymentDate.toLocaleString("en-US", {
+                            month: "short",
+                            day: "2-digit",
+                            year: "numeric",
+                            timeZone: "Asia/Kolkata",
+                        });
 
                     return {
                         "Lead Created": createdDate || "N/A",
                         "Disbursed Date": disbursedDate || "N/A",
+                        "Repayment Date": repaymentDate,
                         "Loan No": disbursed.loanNo || "N/A",
-                        Name: `${lead.fName || ""} ${lead.mName || ""} ${lead.lName || ""}`.trim(),
+                        Name: `${lead.fName || ""} ${lead.mName || ""} ${
+                            lead.lName || ""
+                        }`.trim(),
                         PAN: lead.pan || "N/A",
                         "Sanctioned Amount": cam?.details?.loanRecommended || 0,
+                        ROI: cam?.details?.roi,
+                        Tenure: cam?.details?.eligibleTenure,
+                        "Interest Amount":
+                            Number(cam?.details?.repaymentAmount) -
+                            Number(cam?.details?.loanRecommended),
                         "Disbursed Amount": disbursed.amount || 0,
                         PF: cam?.details?.netAdminFeeAmount || 0,
                         "PF%": cam?.details?.adminFeePercentage || 0,
                         "Beneficiary Bank Name": bank?.bankName || "N/A",
                         accountNo: bank?.bankAccNo || "N/A",
                         IFSC: bank?.ifscCode || "N/A",
+                        utr: disbursed.urt,
+                        Screener: formatFullName(
+                            lead.recommendedBy.fName,
+                            lead.recommendedBy.mName,
+                            lead.recommendedBy.lName
+                        ),
+                        "Credit Manager": formatFullName(
+                            application.recommendedBy.fName,
+                            application.recommendedBy.mName,
+                            application.recommendedBy.lName
+                        ),
+                        "Sanctioned By": formatFullName(
+                            approvedBy.fName,
+                            approvedBy.mName,
+                            approvedBy.lName
+                        ),
+                        "Residence Address":
+                            sanction.application.applicant.residence.address,
+                        "Residence City":
+                            sanction.application.applicant.residence.city,
+                        "Residence State":
+                            sanction.application.applicant.residence.state,
+                        "Residence Pincode":
+                            sanction.application.applicant.residence.pincode,
                     };
                 })
             )
-        ).filter(entry => entry !== null);
+        ).filter((entry) => entry !== null);
 
         return data;
     } catch (error) {
-        console.error("Error generating Excel file:", error.message, error.stack);
+        console.error(
+            "Error generating Excel file:",
+            error
+            // error.stack
+        );
     }
 };
 
+// Function to send approved sanctions to disbursal
+const sendApprovedSanctionToDisbursal = async () => {
+    try {
+        const ids = ["678767712149cb67fccfb17d"];
+
+        for (const id of ids) {
+            // const lastSanctioned = await mongoose.model("Sanction").aggregate([
+            //     {
+            //         $match: { loanNo: { $exists: true, $ne: null } },
+            //     },
+            //     {
+            //         $project: {
+            //             numericLoanNo: {
+            //                 $toInt: { $substr: ["$loanNo", 6, -1] }, // Extract numeric part
+            //             },
+            //         },
+            //     },
+            //     {
+            //         $sort: { numericLoanNo: -1 }, // Sort in descending order
+            //     },
+            //     { $limit: 1 }, // Get the highest number
+            // ]);
+
+            // const lastSequence =
+            //     lastSanctioned.length > 0 ? lastSanctioned[0].numericLoanNo : 0;
+            // const newSequence = lastSequence + 1;
+
+            // const nextLoanNo = `NMFSPE${String(newSequence).padStart(11, 0)}`;
+            const sanctionDate = new Date(2025, 0, 15, 8, 54);
+            const disbursedlDate = new Date(2025, 0, 15, 9, 35);
+
+            const sanction = await Sanction.findByIdAndUpdate(
+                { _id: id },
+                {
+                    $set: {
+                        approvedBy: "677b68a4c2ee186c16e93b6b",
+                        loanNo: "QUALON0000249",
+                        sanctionDate: sanctionDate,
+                    },
+                },
+                { new: true }
+            ).populate({ path: "application", populate: { path: "lead" } });
+
+            if (!sanction) {
+                console.log("Updation failed!!");
+            }
+
+            // const active = await createActiveLead(
+            //     sanction?.application?.lead?.pan,
+            //     sanction.loanNo
+            // );
+
+            // if (!active) {
+            //     console.log("Failed to create an active lead!!");
+            // }
+
+            const disbursal = await Disbursal.create({
+                sanction: sanction._id,
+                loanNo: sanction.loanNo,
+                sanctionedBy: sanction.approvedBy,
+                isRecommended: true,
+                isDisbursed: true,
+                recommendedBy: "677cbdf92273331a42535fc1",
+                disbursalManagerId: "677cbdf92273331a42535fc1",
+                disbursedAt: disbursedlDate,
+                amount: "44200",
+                channel: "imps",
+                paymentMode: "offline",
+                payableAccount: "6345126849",
+            });
+            console.log(disbursal);
+
+            if (!disbursal) {
+                console.log("Saving failed!!");
+            }
+            // Update the active record to include disbursal details
+            // const updatedActive = await Closed.findOne({
+            //     pan: sanction?.application?.lead?.pan,
+            //     "data.loanNo": sanction?.loanNo,
+            // });
+
+            // if (updatedActive) {
+            //     updatedActive.data.forEach((item) => {
+            //         if (item.loanNo === sanction?.loanNo) {
+            //             item.disbursal = disbursal._id.toString(); // Update the disbursal ID in the matched data array
+            //         }
+            //     });
+
+            //     await updatedActive.save();
+            // }
+        }
+        console.log("Disbursal Saved successfully");
+    } catch (error) {
+        console.log(`Some error occured: ${error}`);
+    }
+};
+
+// Function to turn Esign true
+const esignedSanctions = async () => {
+    try {
+        const loanNums = [
+            "QUALON0000280",
+            "QUALON0000282",
+            "QUALON0000283",
+            "QUALON0000286",
+            "QUALON0000287",
+            "QUALON0000288",
+            "QUALON0000290",
+            "QUALON0000291",
+            "QUALON0000292",
+            "QUALON0000295",
+            "QUALON0000300",
+            "QUALON0000301",
+            "QUALON0000306",
+            "QUALON0000307",
+            "QUALON0000308",
+            "QUALON0000311",
+            "QUALON0000312",
+            "QUALON0000313",
+            "QUALON0000314",
+        ];
+        // const sanctions = await Sanction.updateMany(
+        //     { isApproved: true },
+        //     { $set: { eSigned: true, eSignPending: false } }
+        // );
+        // const disbursal = await Disbursal.find({ eSigned: true });
+        // console.log(disbursal);
+
+        const result = await Disbursal.updateMany(
+            { loanNo: { $in: loanNums } }, // Match condition
+            { $set: { sanctionESigned: true } } // Update operation
+        );
+
+        console.log(`Updated ${result.modifiedCount} documents.`);
+        // const disbursal = await Disbursal.updateMany(
+        //     {}, // Optional: select documents where eSigned is true
+        //     { $set: { sanctionESigned: true }, $unset: { eSigned: "" } } // Remove the eSigned field
+        // );
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
+// Function to
 
 // Main Function to Connect and Run
 async function main() {
@@ -983,6 +1133,8 @@ async function main() {
     // await matchPANFromExcel();
     // await exportApprovedSanctions();
     // addRecommendedByToSanctions();
+    // await sendApprovedSanctionToDisbursal();
+    // await esignedSanctions();
     // updateDisbursals();
     // migrateApplicationsToSanctions();
     mongoose.connection.close(); // Close the connection after the script completes

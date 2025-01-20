@@ -43,16 +43,6 @@ export async function htmlToPdf(docs, htmlResponse, fieldName) {
                     right: "0.2in",
                 },
             });
-
-            // Use the utility function to upload the PDF buffer
-            const result = await uploadDocs(docs, null, null, {
-                isBuffer: true,
-                buffer: pdfBuffer,
-                fieldName: fieldName,
-            });
-            if (!result) {
-                return { success: false, message: "Failed to upload PDF." };
-            }
         }
         return {
             success: true,

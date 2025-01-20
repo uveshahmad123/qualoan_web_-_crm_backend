@@ -43,6 +43,7 @@ export const getSanctionData = async (id) => {
                 application.applicant.personalDetails.lName &&
                 ` ${application.applicant.personalDetails.lName}`
             }`,
+            loanNo: `${sanction.loanNo}`,
             pan: `${sanction.application.applicant.personalDetails.pan}`,
             residenceAddress: `${application.applicant.residence.address}, ${application.applicant.residence.city}`,
             stateCountry: `${application.applicant.residence.state}, India - ${application.applicant.residence.pincode}`,
@@ -104,6 +105,7 @@ export const getSanctionData = async (id) => {
             sanction.application.applicant.personalDetails.lName &&
             ` ${sanction.application.applicant.personalDetails.lName}`
         }`,
+        loanNo: `${sanction.loanNo}`,
         pan: `${sanction.application.applicant.personalDetails.pan}`,
         residenceAddress: `${sanction.application.applicant.residence.address}, ${sanction.application.applicant.residence.city}`,
         stateCountry: `${sanction.application.applicant.residence.state}, India - ${sanction.application.applicant.residence.pincode}`,

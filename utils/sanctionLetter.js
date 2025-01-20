@@ -8,6 +8,7 @@ export function sanctionLetter(
     sanctionDate,
     title,
     fullname,
+    loanNo,
     pan,
     mobile,
     residenceAddress,
@@ -25,6 +26,7 @@ export function sanctionLetter(
             sanctionDate: `${sanctionDate}`,
             title: `${title}`,
             fullname: `${fullname}`,
+            loanNo: `${loanNo}`,
             pan: `${pan}`,
             residenceAddress: `${residenceAddress}`,
             stateCountry: `${stateCountry}`,
@@ -38,17 +40,25 @@ export function sanctionLetter(
                 camDetails?.details.repaymentAmount
             )}`,
             tenure: `${camDetails?.details.eligibleTenure}`,
+            totalInterest: `${new Intl.NumberFormat().format(
+                Number(camDetails?.details.repaymentAmount) -
+                    Number(camDetails?.details.loanRecommended)
+            )}`,
             repaymentDate: dateFormatter(camDetails?.details.repaymentDate),
             penalInterest: Number(camDetails?.details.roi) * 2,
             processingFee: `${new Intl.NumberFormat().format(
                 camDetails?.details.netAdminFeeAmount
             )}`,
+            disbursalAmount: `${new Intl.NumberFormat().format(
+                camDetails?.details.netDisbursalAmount
+            )}`,
             // repaymentCheques: `${camDetails?.details.repaymentCheques || "-"}`,
             // bankName: `${bankName || "-"}`,
             bouncedCharges: "1000",
-            // annualPercentageRate: `${
-            //     camDetails?.details.annualPercentageRate || "0"
-            // }`,
+            annualPercentage: `${
+                365 * Number(camDetails?.details?.roi) +
+                Number(camDetails?.details?.adminFeePercentage)
+            }`,
         };
 
         let htmlToSend = template(replacements);
