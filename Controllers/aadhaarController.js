@@ -5,6 +5,7 @@ import AadhaarDetails from "../models/AadhaarDetails.js";
 import sendEmail from "../utils/sendEmail.js";
 import jwt from "jsonwebtoken";
 import { aadhaarKyc } from "../utils/smsGateway.js";
+import { postLogs } from "./logs.js";
 
 // @desc Generate Aadhaar OTP.
 // @route GET /api/verify/mail/:id
@@ -13,15 +14,15 @@ export const generateAadhaarLink = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const lead = await Lead.findById(id);
-    const { personalEmail, fName, mName, lName, _id } = lead;
-    const token = jwt.sign({ _id }, process.env.AADHAAR_LINK_SECRET, {
+    const { personalEmail, fName, mName, lName } = lead;
+    const token = jwt.sign({ id }, process.env.AADHAAR_LINK_SECRET, {
         expiresIn: "5m",
     });
     req.session.token = token;
 
     const customerName = `${fName}${mName && ` ${mName}`} ${lName}`;
-    const link = `https://api.qualoan.com/verify-aadhaar/${id}`;
-    // const link = `http://localhost:8080/verify-aadhaar/${id}`;
+    // const link = `https://api.qualoan.com/verify-aadhaar/${id}`;
+    const link = `http://localhost:8080/verify-aadhaar/${id}`;
     const result = await aadhaarKyc(lead.mobile, lead.fName, lead.lName, link);
 
     if (result.data.ErrorMessage === "Success") {
@@ -32,16 +33,19 @@ export const generateAadhaarLink = asyncHandler(async (req, res) => {
             `Aadhaar verification`,
             link
         );
+        await postLogs(
+            id,
+            "AADHAAR LINK SENT TO THE CUSTOMER",
+            `${lead.fName}${lead.mName && ` ${lead.mName}`}${
+                lead.lName && ` ${lead.lName}`
+            }`,
+            "Aadhaar Link sent to the customer"
+        );
         return res.json({
             success: true,
             message: "Link sent successfully on mobile and email.",
         });
     }
-    // return res.json({
-    //     success: true,
-    //     message: "Link sent successfully on mobile and email.",
-    // });
-
     return res
         .status(500)
         .json({ success: false, message: "Failed to send OTP" });
@@ -53,7 +57,6 @@ export const generateAadhaarLink = asyncHandler(async (req, res) => {
 export const aadhaarOtp = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    console.log("aadhaar", id);
     const lead = await Lead.findById(id);
     const aadhaar = lead?.aadhaar;
 
@@ -68,6 +71,15 @@ export const aadhaarOtp = asyncHandler(async (req, res) => {
     // Call the function to generate OTP using Aaadhaar number
     const response = await generateAadhaarOtp(aadhaar);
     // res.render('otpRequest',);
+
+    await postLogs(
+        id,
+        "AADHAAR OTP SENT TO THE CUSTOMER",
+        `${lead.fName}${lead.mName && ` ${lead.mName}`}${
+            lead.lName && ` ${lead.lName}`
+        }`,
+        "Aadhaar otp sent to the customer"
+    );
 
     res.json({
         success: true,
@@ -89,6 +101,8 @@ export const saveAadhaarDetails = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("Missing fields.");
     }
+
+    const lead = await Lead.findOne({ _id: id });
 
     // Fetch Aaadhaar details using the provided OTP and request ID
     const response = await verifyAadhaarOtp(
@@ -131,6 +145,15 @@ export const saveAadhaarDetails = asyncHandler(async (req, res) => {
             { new: true }
         );
 
+        await postLogs(
+            id,
+            "AADHAAR OTP SUBMITTED BY THE CUSTOMER",
+            `${lead.fName}${lead.mName && ` ${lead.mName}`}${
+                lead.lName && ` ${lead.lName}`
+            }`,
+            "Aadhaar otp submitted by the customer"
+        );
+
         // Respond with a success message
         return res.json({
             success: true,
@@ -149,12 +172,10 @@ export const checkAadhaarDetails = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const lead = await Lead.findById(id);
-    const { fName, aadhaar } = lead;
+    const { aadhaar } = lead;
     const data = await AadhaarDetails.findOne({
         "details.adharNumber": aadhaar,
     });
-
-    // res.render('otpRequest',);
 
     res.json({
         success: true,
@@ -167,11 +188,30 @@ export const checkAadhaarDetails = asyncHandler(async (req, res) => {
 // @access Private
 export const verifyAadhaar = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    console.log(id);
 
-    await Lead.findByIdAndUpdate(
+    const lead = await Lead.findByIdAndUpdate(
         id,
         { isAadhaarVerified: true },
         { new: true }
+    ).populate("screenerId");
+
+    if (!lead) {
+        res.status(400);
+        throw new Error("Couldn't verify Aadhaar");
+    }
+
+    await postLogs(
+        id,
+        `AADHAR VERIFIED BY ${lead.screenerId.fName}${
+            lead.screenerId.lName && ` ${lead.screenerId.lName}`
+        }`,
+        `${lead.fName}${lead.mName && ` ${lead.mName}`}${
+            lead.lName && ` ${lead.lName}`
+        }`,
+        `Aadhaar verified by ${lead.screenerId.fName}${
+            lead.screenerId.mName && ` ${lead.screenerId.mName}`
+        }${lead.screenerId.lName && ` ${lead.screenerId.lName}`}`
     );
     return res.json({
         success: true,
