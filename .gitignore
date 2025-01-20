@@ -65,3 +65,9 @@ docker-compose.yml
 
 # AWS SAM
 .aws-sam/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

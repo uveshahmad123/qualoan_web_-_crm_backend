@@ -1,10 +1,29 @@
 import mongoose from "mongoose";
 
+
+const extraDetailsSchema = new mongoose.Schema({
+    personalDetails: {
+        type: Object
+    },
+    employeDetails: {
+        type: Object
+    },
+    residenceDetails: {
+        type: Object
+    },
+    incomeDetails: {
+        type: Object
+    },
+    disbursalBankDetails:{
+        type : Object
+    }
+});
+
 const leadSchema = new mongoose.Schema(
     {
-        userId:{
-            type : mongoose.Schema.Types.ObjectId,
-            ref : "User",
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
         },
         fName: {
             type: String,
@@ -215,9 +234,9 @@ const leadSchema = new mongoose.Schema(
             enum: ["website", "bulk", "landingPage", "whatsapp", "app"],
             default: "website",
         },
-        extraDetails:[{
-            type : Object,
-        }],
+        extraDetails: {
+            type: extraDetailsSchema
+        },
         referenceId: {
             type: String,
         },

@@ -245,13 +245,13 @@ const disbursalBankDetails = asyncHandler(async (req, res) => {
         city: userDetails.residenceDetails.city,
         source: userDetails.platformType,
         leadStatus: leadStatus._id,
-        extraDetails: [
+        extraDetails: {
             personalDetails,
             employeDetails,
             disbursalBankDetails,
             residenceDetails,
             incomeDetails
-        ]
+        }
     });
 
     if (!newLead) {

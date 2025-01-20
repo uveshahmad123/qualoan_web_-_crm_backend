@@ -4,7 +4,7 @@ const bankSchema = new mongoose.Schema(
     {
         borrowerId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "ApplicationPersonalDetails",
+            ref: "Applicant",
             unique: true,
         },
         bankName: {

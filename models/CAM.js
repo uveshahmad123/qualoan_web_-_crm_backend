@@ -3,6 +3,9 @@ import mongoose from "mongoose";
 
 const camSchema = new mongoose.Schema(
     {
+        pan:{
+            type: String,
+        },
         leadNo:{
             type: String,
             required: true

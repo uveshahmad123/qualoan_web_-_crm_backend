@@ -25,7 +25,48 @@ export const getPendingSanctions = asyncHandler(async (req, res) => {
 
         const query = {
             isRejected: { $ne: true },
-            isApproved: { $ne: true },
+            // isApproved: { $ne: true },
+            eSignPending: { $ne: true },
+            eSigned: { $ne: true },
+        };
+
+        const sanctions = await Sanction.find(query)
+            .skip(skip)
+            .limit(limit)
+            .sort({ updatedAt: -1 })
+            .populate({
+                path: "application",
+                populate: [
+                    { path: "lead", populate: { path: "documents" } },
+                    { path: "recommendedBy", select: "fName mName lName" },
+                ],
+            });
+
+        const totalSanctions = await Sanction.countDocuments(query);
+
+        return res.json({
+            totalSanctions,
+            totalPages: Math.ceil(totalSanctions / limit),
+            currentPage: page,
+            sanctions,
+        });
+    }
+});
+// @desc Get the forwarded applications
+// @route GET /api/sanction/eSignPending
+// @access Private
+export const getPendingESign = asyncHandler(async (req, res) => {
+    if (req.activeRole === "sanctionHead") {
+        const page = parseInt(req.query.page); // current page
+        const limit = parseInt(req.query.limit); // items per page
+        const skip = (page - 1) * limit;
+
+        const query = {
+            $and: [
+                { isRejected: false },
+                { isApproved: true },
+                { eSigned: false },
+            ],
         };
 
         const sanctions = await Sanction.find(query)
@@ -173,6 +214,9 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
                 id
             );
 
+            const { fName, mName, lName, pan } =
+                sanction.application.applicant.personalDetails;
+
             const lead = await Lead.findById({
                 _id: sanction.application.lead,
             });
@@ -181,7 +225,7 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
 
             const activeLead = await Closed.findOne(
                 {
-                    pan: sanction.application.applicant.personalDetails.pan,
+                    pan,
                     data: {
                         $elemMatch: {
                             isActive: true,
@@ -206,24 +250,24 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
             const newLoanNo = await nextSequence("loanNo", "QUALON", 7);
 
             // Call the generateSanctionLetter utility function
-            const emailResponse = await generateSanctionLetter(
-                `SANCTION LETTER - ${response.fullname}`,
-                dateFormatter(response.sanctionDate),
-                response.title,
-                response.fullname,
-                response.mobile,
-                response.residenceAddress,
-                response.stateCountry,
-                camDetails,
-                lead,
-                docs,
-                `${sanction.application.applicant.personalDetails.personalEmail}`
-            );
+            // const emailResponse = await generateSanctionLetter(
+            //     `SANCTION LETTER - ${response.fullname}`,
+            //     dateFormatter(response.sanctionDate),
+            //     response.title,
+            //     response.fullname,
+            //     response.mobile,
+            //     response.residenceAddress,
+            //     response.stateCountry,
+            //     camDetails,
+            //     lead,
+            //     docs,
+            //     `${personalEmail}`
+            // );
 
-            // Return a unsuccessful response
-            if (!emailResponse.success) {
-                return res.status(400).json({ success: false });
-            }
+            // // Return a unsuccessful response
+            // if (!emailResponse.success) {
+            //     return res.status(400).json({ success: false });
+            // }
 
             const update = await Sanction.findByIdAndUpdate(
                 id,
@@ -244,7 +288,7 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
             }
 
             const newActiveLead = await createActiveLead(
-                sanction.application.applicant.personalDetails.pan,
+                pan,
                 existing.loanNo
                 // disbursalRes._id
             );
@@ -255,8 +299,145 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
                 );
             }
 
+            // const newDisbursal = new Disbursal({
+            //     sanction: sanction._id,
+            //     loanNo: existing.loanNo,
+            // });
+
+            // const disbursalRes = await newDisbursal.save();
+
+            // if (!disbursalRes) {
+            //     res.status(400);
+            //     throw new Error("Could not approve this application!!");
+            // }
+
+            // Update the Closed collection
+            // const updateResult = await Closed.updateOne(
+            //     {
+            //         pan,
+            //         "data.loanNo": existing.loanNo, // Match the document where the data array has this loanNo
+            //     },
+            //     // {
+            //     //     $set: {
+            //     //         "data.$.disbursal": disbursalRes._id, // Use the `$` positional operator to update the matched array element
+            //     //     },
+            //     // }
+            // );
+
+            // if (updateResult.modifiedCount === 0) {
+            //     res.status(400);
+            //     throw new Error(
+            //         "No matching record found to update in the Closed collection!"
+            //     );
+            // }
+
+            const logs = await postLogs(
+                sanction.application.lead,
+                "SANCTION APPROVED AND LOAN NUMBER ALLOTTED",
+                `${fName}${mName && ` ${mName}`}${lName && ` ${lName}`}`,
+                `Sanction approved by ${req.employee.fName} ${req.employee.lName}`
+            );
+
+            return res.json({ success: true, logs });
+        } catch (error) {
+            console.log("error", error);
+            res.status(500);
+            throw new Error(error.message);
+        }
+    } else {
+        res.status(401);
+        throw new Error("You are not authorized!!");
+    }
+});
+// @desc Send Sanction letter to applicants
+// @route PATCH /api/sanction/sendESign/:id
+// @access Private
+export const sendESign = asyncHandler(async (req, res) => {
+    if (req.activeRole === "sanctionHead") {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const { id } = req.params;
+
+            const { sanction, camDetails, response } = await getSanctionData(
+                id
+            );
+
+            const { fName, mName, lName, pan, personalEmail } =
+                sanction.application.applicant.personalDetails;
+
+            const lead = await Lead.findById({
+                _id: sanction.application.lead,
+            });
+
+            const docs = await Documents.findOne({ _id: lead.documents });
+
+            // const activeLead = await Closed.findOne(
+            //     {
+            //         pan,
+            //         data: {
+            //             $elemMatch: {
+            //                 isActive: true,
+            //             },
+            //         },
+            //     },
+            //     {
+            //         pan: 1,
+            //         data: {
+            //             $elemMatch: {
+            //                 isActive: true,
+            //             },
+            //         },
+            //     }
+            // );
+
+            // if (activeLead) {
+            //     res.status(403);
+            //     throw new Error("This PAN already has an active lead!!");
+            // }
+
+            // Call the generateSanctionLetter utility function
+            const emailResponse = await generateSanctionLetter(
+                `SANCTION LETTER - ${response.fullname}`,
+                dateFormatter(response.sanctionDate),
+                response.title,
+                response.loanNo,
+                response.fullname,
+                response.mobile,
+                response.residenceAddress,
+                response.stateCountry,
+                camDetails,
+                lead,
+                docs,
+                `${personalEmail}`
+            );
+
+            // // Return a unsuccessful response
+            if (!emailResponse.success) {
+                return res.status(400).json({ success: false });
+            }
+
+            const update = await Sanction.findByIdAndUpdate(
+                id,
+                {
+                    eSignPending: true,
+                },
+                { new: true }
+            );
+
+            const existing = await Sanction.findById(id);
+
+            if (!update) {
+                res.status(400);
+                throw new Error("There was some problem with update!!");
+            }
+
+
             const newDisbursal = new Disbursal({
                 sanction: sanction._id,
+                pan: sanction.pan,
+                leadNo: sanction.leadNo,
                 loanNo: existing.loanNo,
             });
 
@@ -270,7 +451,7 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
             // Update the Closed collection
             const updateResult = await Closed.updateOne(
                 {
-                    pan: sanction.application.applicant.personalDetails.pan,
+                    pan,
                     "data.loanNo": existing.loanNo, // Match the document where the data array has this loanNo
                 },
                 {
@@ -286,26 +467,16 @@ export const sanctionApprove = asyncHandler(async (req, res) => {
                     "No matching record found to update in the Closed collection!"
                 );
             }
-
             const logs = await postLogs(
                 sanction.application.lead,
-                "SANCTION APPROVED. SEND TO DISBURSAL",
-                `${sanction.application.applicant.personalDetails.fName}${
-                    sanction.application.applicant.personalDetails.mName &&
-                    ` ${sanction.application.applicant.personalDetails.mName}`
-                }${
-                    sanction.application.applicant.personalDetails.lName &&
-                    ` ${sanction.application.applicant.personalDetails.lName}`
-                }`,
-                `Sanction approved by ${req.employee.fName} ${req.employee.lName}`
+                "SANCTION LETTER SENT TO CLIENT FOR E-SIGN",
+                `${fName}${mName && ` ${mName}`}${lName && ` ${lName}`}`,
+                `Sanction Letter sent by ${req.employee.fName} ${req.employee.lName}`
             );
-            await session.commitTransaction();
-            session.endSession();
 
             return res.json({ success: true, logs });
         } catch (error) {
-            await session.abortTransaction();
-            session.endSession();
+            console.log("error", error);
             res.status(500);
             throw new Error(error.message);
         }
@@ -332,7 +503,11 @@ export const sanctioned = asyncHandler(async (req, res) => {
         query = {
             // eSigned: { $eq: true },
             isApproved: { $eq: true },
-            isDisbursed: { $ne: true },
+            // isDisbursed: { $ne: true },
+            $or:[
+                {eSigned:{ $eq: true }},
+                {eSignPending:{ $eq: true }}
+            ]
         };
     }
     const sanction = await Sanction.find(query)

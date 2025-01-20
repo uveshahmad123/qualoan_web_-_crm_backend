@@ -3,6 +3,10 @@ import axios from "axios";
 import Lead from "../models/Leads.js";
 import Documents from "../models/Documents.js";
 import { uploadDocs } from "../utils/docsUploadAndFetch.js";
+import Application from "../models/Applications.js";
+import Sanction from "../models/Sanction.js";
+import Disbursal from "../models/Disbursal.js";
+import { postLogs } from "./logs.js";
 
 export const initiate = async (formData) => {
     // Step-1: Initiate E-sign
@@ -11,8 +15,8 @@ export const initiate = async (formData) => {
         formData,
         {
             headers: {
-                clientId: process.env.SCOREME_BSA_CLIENT_ID,
-                clientSecret: process.env.SCOREME_BSA_CLIENT_SECRET,
+                clientId: process.env.SCOREME_CLIENT_ID,
+                clientSecret: process.env.SCOREME_CLIENT_SECRET,
                 "Content-Type": "application/pdf",
             },
         }
@@ -26,8 +30,8 @@ export const eSignStepTwo = async (referenceId) => {
         `https://sm-kyc-sync-prod.scoreme.in/kyc/external/getkycrequestresponse?referenceId=${referenceId}`,
         {
             headers: {
-                clientId: process.env.SCOREME_BSA_CLIENT_ID,
-                clientSecret: process.env.SCOREME_BSA_CLIENT_SECRET,
+                clientId: process.env.SCOREME_CLIENT_ID,
+                clientSecret: process.env.SCOREME_CLIENT_SECRET,
             },
         }
     );
@@ -45,16 +49,18 @@ export const eSignStepThree = async (leadId, fullName, aadhaar, url) => {
             inputFile: `${url}`,
             name: `${fullName}`,
             multiPages: "true",
-            signaturePosition: "",
-            pageNo: "1",
+            signaturePosition: "bottom-Left",
+            pageNo: "all",
             signatureType: "aadhaaresign",
             xCoordinate: "10",
             yCoordinate: "10",
+            height: "100",
+            width: "40",
         },
         {
             headers: {
-                clientId: process.env.SCOREME_BSA_CLIENT_ID,
-                clientSecret: process.env.SCOREME_BSA_CLIENT_SECRET,
+                clientId: process.env.SCOREME_CLIENT_ID,
+                clientSecret: process.env.SCOREME_CLIENT_SECRET,
                 "Content-Type": "application/json",
             },
         }
@@ -78,42 +84,13 @@ export const eSignStepFour = async (referenceId) => {
         `https://sm-kyc-sync-prod.scoreme.in/kyc/external/getkycrequestresponse?referenceId=${referenceId}`,
         {
             headers: {
-                clientId: process.env.SCOREME_BSA_CLIENT_ID,
-                clientSecret: process.env.SCOREME_BSA_CLIENT_SECRET,
+                clientId: process.env.SCOREME_CLIENT_ID,
+                clientSecret: process.env.SCOREME_CLIENT_SECRET,
             },
         }
     );
     return eSignStepFour.data;
 };
-
-// export const sendLinkToCustomer = async (eSignStepOne, formData) => {
-//     if (eSignStepOne.data.code === "200") {
-//         const eSignStepTwo = await axios.put(
-//             `${eSignStepOne.data.model.uploadUrl}`,
-//             formData,
-//             {
-//                 headers: {
-//                     ...formData.getHeaders(), // Required to set proper Content-Type boundary
-//                 },
-//             }
-//         );
-
-//         const eSignStepThree = await axios.post(
-//             "https://api.digitap.ai/clickwrap/v1/send/sign-in-link",
-//             {
-//                 docTransactionId: `${eSignStepOne.data.model.docTransactionId}`,
-//                 sendNotification: true,
-//             },
-//             {
-//                 headers: {
-//                     ent_authorization: process.env.DIGITAP_AUTH_KEY,
-//                     "Content-Type": "application/json",
-//                 },
-//             }
-//         );
-//         return eSignStepThree.data;
-//     }
-// };
 
 // @desc Esign webhook for Digitap to send us a response if doc is esigned
 // @route POST /api/sanction/esign/success
@@ -121,7 +98,8 @@ export const eSignStepFour = async (referenceId) => {
 export const eSignWebhook = asyncHandler(async (req, res) => {
     const data = req.body;
     if (data.data.dscData && Object.keys(data.data.dscData).length > 0) {
-        const response = await getDoc(data.referenceId, data);
+        const time = new Date();
+        const response = await getDoc(data.referenceId, data, time);
         if (!response.success) {
             res.status(400);
             throw new Error(response.message);
@@ -134,7 +112,7 @@ export const eSignWebhook = asyncHandler(async (req, res) => {
     return res.json({ success: true });
 });
 
-export const getDoc = async (referenceId, data) => {
+export const getDoc = async (referenceId, data, time) => {
     try {
         const lead = await Lead.findOne({ referenceId: referenceId });
         const docs = await Documents.findOne({ _id: lead.documents });
@@ -143,14 +121,45 @@ export const getDoc = async (referenceId, data) => {
             responseType: "arraybuffer", // Important to preserve the binary data
         });
 
+        const application = await Application.findOne({ lead: lead._id });
+        const sanction = await Sanction.findOneAndUpdate(
+            { application: application._id },
+            { eSigned: true, eSignPending: false },
+            { new: true }
+        );
+
         // Use the utility function to upload the PDF buffer
         const result = await uploadDocs(docs, null, null, {
             rawPdf: eSignStepfive.data,
             rawPdfKey: "sanctionLetter",
+            rawPdfRemarks: sanction.loanNo,
         });
         if (!result) {
             return { success: false, message: "Failed to upload PDF." };
         }
+
+        if (!sanction) {
+            return { success: false, message: "Sanction Esign failed!!" };
+        }
+
+        const disbursal = await Disbursal.findOneAndUpdate(
+            { loanNo: sanction.loanNo },
+            { sanctionESigned: true }
+        );
+
+        if (!disbursal) {
+            return { success: false, message: "Disbursal Esign failed!!" };
+        }
+        logs = await postLogs(
+            lead._id,
+            `Sanction Letter eSigned on ${time}`,
+            `${lead.fName}${lead.mName && ` ${lead.mName}`}${
+                lead.lName && ` ${lead.lName}`
+            }`,
+            `Sanction Letter eSgined by ${lead.fName}${
+                lead.mName && ` ${lead.mName}`
+            }${lead.lName && ` ${lead.lName}`}`
+        );
         return {
             success: true,
             message: "File uploaded.",

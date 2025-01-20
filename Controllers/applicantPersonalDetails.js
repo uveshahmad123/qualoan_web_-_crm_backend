@@ -11,6 +11,7 @@ import { verifyBank } from "../utils/verifyBank.js";
 // @access Private
 export const applicantDetails = async (details = null) => {
     try {
+        console.log("details--->" , details)
         // Define the criteria to find an existing applicant
         const filter = {
             $and: [
@@ -46,16 +47,16 @@ export const applicantDetails = async (details = null) => {
                 pan: details.pan,
                 aadhaar: details.aadhaar,
             },
-            residenceDetails: details.extraDetails.residence,
+            residence: details.extraDetails.residenceDetails,
             incomeDetails: details.extraDetails.incomeDetails,
-            employmentDetails: {
-                companyName: details.extraDetails.incomeDetails.companyName,
-                companyAddress: details.extraDetails.incomeDetails.officeAddrress,
-                state: details.extraDetails.incomeDetails.state,
-                city: details.extraDetails.incomeDetails.city,
-                pincode: details.extraDetails.incomeDetails.pincode,
-                department: details.extraDetails.incomeDetails.companyType,
-                designation: details.extraDetails.incomeDetails.designation,
+            employment: {
+                companyName: details.extraDetails.employeDetails.companyName,
+                companyAddress: details.extraDetails.employeDetails.officeAddrress,
+                state: details.extraDetails.employeDetails.state,
+                city: details.extraDetails.employeDetails.city,
+                pincode: details.extraDetails.employeDetails.pincode,
+                department: details.extraDetails.employeDetails.companyType,
+                designation: details.extraDetails.employeDetails.designation,
             },
         };
 
@@ -64,19 +65,18 @@ export const applicantDetails = async (details = null) => {
             upsert: true,
             new: true,
         });
+        console.log("details---->" , )
 
         const addBankDetails = await Bank.create(
             {
                 borrowerId: applicant._id,
-                beneficiaryName: details.extraDetails.disbursalbankdetails
-                    .beneficiaryName,
-                bankAccNo: details.extraDetails.disbursalbankdetails
-                    .accountNumber,
-                accountType: details.extraDetails.disbursalbankdetails
-                    .accountType,
-                ifscCode: details.extraDetails.disbursalbankdetails.ifscCode,
-                bankName: details.extraDetails.disbursalbankdetails.bankName,
-                branchName: details.extraDetails.disbursalbankdetails.branchName,
+                beneficiaryName: details.extraDetails.disbursalBankDetails.beneficiaryName ?? "Uvesh",
+                bankAccNo: details.extraDetails.disbursalBankDetails.accountNumber,
+                bankAccNo:  details.extraDetails.disbursalBankDetails.accountNumber,
+                accountType: details.extraDetails.disbursalBankDetails.accountType,
+                ifscCode: details.extraDetails.disbursalBankDetails.ifscCode,
+                bankName: details.extraDetails.disbursalBankDetails.bankName,
+                branchName: details.extraDetails.disbursalBankDetails.branchName ?? "PUNB",
             })
 
         if(!addBankDetails){
