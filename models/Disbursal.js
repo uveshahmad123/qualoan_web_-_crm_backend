@@ -40,6 +40,13 @@ const disbursalSchema = new mongoose.Schema(
             type: String,
             enum: ["imps", "neft", "IMPS", "NEFT"],
         },
+        utr: {
+            type: String,
+        },
+        sanctionedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Employee",
+        },
         // onHold:{
         //     type: Boolean,
         //     default: false,
@@ -56,6 +63,10 @@ const disbursalSchema = new mongoose.Schema(
         //     type: mongoose.Schema.Types.ObjectId,
         //     ref: "Employee",
         // },
+        sanctionESigned: {
+            type: Boolean,
+            default: false,
+        },
         isRecommended: {
             type: Boolean,
             default: false,
@@ -63,6 +74,17 @@ const disbursalSchema = new mongoose.Schema(
         recommendedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Employee",
+        },
+        leadNo: {
+            type: String,
+            // required: true,
+            unique:true,
+            sparse:true,
+        },
+        pan: {
+            type: String,
+            // required: true,
+            // unique: true,
         },
         isDisbursed: {
             type: Boolean,

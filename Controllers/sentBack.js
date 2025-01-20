@@ -10,11 +10,8 @@ export const sentBack = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { sendTo, reason } = req.body;
 
-    const lead = await Lead.findById(id);
-    let application = await Application.findOne({ lead: id }).populate({
-        path: "lead",
-        populate: { path: "documents" },
-    });
+    const lead = await Lead.findById(id).populate("screenerId");
+    let application = await Application.findOne({ lead: id });
     let sanction;
     let disbursal;
 
@@ -25,7 +22,10 @@ export const sentBack = asyncHandler(async (req, res) => {
             const deletedApplication = await Application.findOneAndDelete({
                 lead: id,
             })
-                .populate({ path: "lead", populate: { path: "documents" } })
+                .populate({
+                    path: "lead",
+                    populate: [{ path: "screenerId" }],
+                })
                 .populate({
                     path: "creditManagerId",
                     select: "fName mName lName",
@@ -41,7 +41,12 @@ export const sentBack = asyncHandler(async (req, res) => {
 
             logs = await postLogs(
                 lead._id,
-                `SENT BACK TO ${sendTo.toUpperCase()}`,
+                `SENT BACK TO SCREENER ${
+                    deletedApplication.lead.screenerId.fName
+                }${
+                    deletedApplication.lead.screenerId.lName &&
+                    ` ${deletedApplication.lead.screenerId.lName}`
+                }`,
                 `${deletedApplication.lead.fName}${
                     deletedApplication.lead.mName &&
                     ` ${deletedApplication.lead.mName}`
@@ -49,7 +54,7 @@ export const sentBack = asyncHandler(async (req, res) => {
                     deletedApplication.lead.lName &&
                     ` ${deletedApplication.lead.lName}`
                 }`,
-                `Sent back by ${deletedApplication.creditManagerId.fName} ${deletedApplication.creditManagerId.lName}`,
+                `Sent back by screener ${deletedApplication.creditManagerId.fName} ${deletedApplication.creditManagerId.lName}`,
                 `${reason}`
             );
             res.json({ success: true, logs });
@@ -61,7 +66,7 @@ export const sentBack = asyncHandler(async (req, res) => {
                 application: application._id,
             }).populate({
                 path: "application",
-                populate: { path: "lead", populate: { path: "documents" } },
+                populate: [{ path: "creditManagerId" }, { path: "lead" }],
             });
             if (!sanction) {
                 res.status(400);
@@ -73,7 +78,12 @@ export const sentBack = asyncHandler(async (req, res) => {
 
             logs = await postLogs(
                 lead._id,
-                `SENT BACK TO ${sendTo.toUpperCase()}`,
+                `SENT BACK TO CREDIT MANAGER ${
+                    sanction.application.creditManagerId.fName
+                }${
+                    sanction.application.creditManagerId.lName &&
+                    ` ${sanction.application.creditManagerId.lName}`
+                }`,
                 `${sanction.application.lead.fName}${
                     sanction.application.lead.mName &&
                     ` ${sanction.application.lead.mName}`
@@ -81,7 +91,7 @@ export const sentBack = asyncHandler(async (req, res) => {
                     sanction.application.lead.lName &&
                     ` ${sanction.application.lead.lName}`
                 }`,
-                `Sent back by ${req.employee.fName} ${req.employee.lName}`,
+                `Sent back by credit manager ${req.employee.fName} ${req.employee.lName}`,
                 `${reason}`
             );
 
@@ -103,6 +113,7 @@ export const sentBack = asyncHandler(async (req, res) => {
                 sanction: sanction._id,
             }).populate([
                 {
+                    path: "disbursalManagerId",
                     path: "sanction",
                     populate: {
                         path: "application",
@@ -124,7 +135,12 @@ export const sentBack = asyncHandler(async (req, res) => {
 
             logs = await postLogs(
                 lead._id,
-                `SENT BACK TO ${sendTo.toUpperCase()}`,
+                `SENT BACK TO DISBURSAL MANAGER ${
+                    disbursal.disbursalManagerId.fName
+                }${
+                    disbursal.disbursalManagerId.lName &&
+                    ` ${disbursal.disbursalManagerId.lName}`
+                }`,
                 `${disbursal.sanction.application.lead.fName}${
                     disbursal.sanction.application.lead.mName &&
                     ` ${disbursal.sanction.application.lead.mName}`
@@ -132,7 +148,7 @@ export const sentBack = asyncHandler(async (req, res) => {
                     disbursal.sanction.application.lead.lName &&
                     ` ${disbursal.sanction.application.lead.lName}`
                 }`,
-                `Sent back by ${req.employee.fName} ${req.employee.lName}`,
+                `Sent back by disbursal manager ${req.employee.fName} ${req.employee.lName}`,
                 `${reason}`
             );
 

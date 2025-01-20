@@ -2,6 +2,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import Lead from "../models/Leads.js";
 import { panVerify, panAadhaarLinkage } from "../utils/pan.js";
 import PanDetails from "../models/PanDetails.js";
+import { postLogs } from "./logs.js";
 
 // @desc Verify Pan.
 // @route GET /api/verify/pan/:id
@@ -48,6 +49,7 @@ export const savePanDetails = asyncHandler(async (req, res) => {
     const { data } = req.body;
 
     const pan = data.pan;
+    const lead = await Lead.findOne({ _id: id }).populate("screenerId");
 
     const existingPan = await PanDetails.findOne({
         $or: [
@@ -69,6 +71,18 @@ export const savePanDetails = asyncHandler(async (req, res) => {
     }
 
     await Lead.findByIdAndUpdate(id, { isPanVerified: true }, { new: true });
+    await postLogs(
+        id,
+        `PAN VERIFIED BY ${lead.screenerId.fName}${
+            lead.screenerId.lName && ` ${lead.screenerId.lName}`
+        }`,
+        `${lead.fName}${lead.mName && ` ${lead.mName}`}${
+            lead.lName && ` ${lead.lName}`
+        }`,
+        `PAN verified by ${lead.screenerId.fName}${
+            lead.screenerId.mName && ` ${lead.screenerId.mName}`
+        }${lead.screenerId.lName && ` ${lead.screenerId.lName}`}`
+    );
 
     // Now save the data in the AadharDetails database
     const newpanDetail = new PanDetails({

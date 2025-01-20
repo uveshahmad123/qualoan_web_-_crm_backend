@@ -18,12 +18,12 @@ const closedSchema = new mongoose.Schema(
                 date: { type: Date },
                 amount: { type: Number, default: 0 },
                 discount: { type: Number, default: 0 },
-                utr: { type: String, unique: true },
+                utr: { type: String },
                 partialPaid: [
                     {
                         date: { type: Date },
                         amount: { type: Number, default: 0 },
-                        utr: { type: String, unique: true },
+                        utr: { type: String },
                         isPartlyPaid: { type: Boolean, default: false },
                         requestedStatus: {
                             type: String,

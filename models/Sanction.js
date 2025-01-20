@@ -15,6 +15,21 @@ const sanctionSchema = new mongoose.Schema(
         sanctionDate: {
             type: Date,
         },
+        leadNo: {
+            type: String,
+            // required: true,
+            unique:true,
+            sparse:true,
+        },
+        pan: {
+            type: String,
+            // required: true,
+            // unique: true,
+        },
+        eSignPending: {
+            type: Boolean,
+            default: false,
+        },
         eSigned: {
             type: Boolean,
             default: false,
